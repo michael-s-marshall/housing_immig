@@ -2,6 +2,7 @@ pacman::p_load(tidyverse, haven, survey, srvyr, jtools)
 
 rm(list = ls())
 
+# replace with your working directory
 data_path <- "U:/UKHLS_stata/UKDA-6614-stata/stata/stata13_se/ukhls/"
 df <- read_dta(file=paste0(data_path, "k_hhresp.dta"))
 
