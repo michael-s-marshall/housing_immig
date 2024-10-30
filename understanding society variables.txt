@@ -1,0 +1,9 @@
+w_fihhmnnet1_dv+ = net household monthly income
+w_fihhmngrs_dv+ = gross household income
+w_fihhmngrs1_dv = gross household income adjusted for HB discrepancy
+w_rentgrs_dv = gross rent
+w_rent_dv = rent net of HB
+w_houscost1_dv = housing costs incl. capital repayments
+w_houscost2_dv = housing costs excl. capital repayments
+fihhmnnet3_dv = net household income less council tax liability
+
