@@ -130,10 +130,26 @@ mod_dat <- mod_dat %>%
          own_mortgage, own_outright, region_fct, e, d, c1, c2, b, cohabiting) %>% 
   na.omit()
 
-# test and train: 0.9/0.1 ratio
+# test and train set ---------------------------------------------
+
+outcome <- mod_dat$income
+predictors <- c("full_time","education_age","male","log_hh","disabled","unemployed",
+                "part_time","white_british","pakistan_bangladesh","log_age",
+                "non_uk_born","social_housing","private_renting","own_mortgage",
+                "own_outright","region_fct","e","d","c1","c2","b","cohabiting")
+mod_predictors <- mod_dat[,predictors]
 set.seed(123)
-train_set <- sample_frac(mod_dat, 0.9) %>% as.data.frame()
-test_set <- mod_dat %>% filter(!id %in% train_set$id) %>% as.data.frame()
+in_train <- createDataPartition(outcome, p = 0.9, list = F)
+train_predictors <- mod_predictors[in_train,] |> as.data.frame()
+test_predictors <- mod_predictors[-in_train,] |> as.data.frame()
+train_outcome <- outcome[in_train]
+test_outcome <- outcome[-in_train]
+
+# scaling and centering
+x_trans <- preProcess(train_predictors)
+train_predictors <- predict(x_trans, train_predictors)
+test_predictors <- predict(x_trans, test_predictors)
+mod_predictors <- predict(x_trans, mod_predictors)
 
 # Defining the training controls for multiple models -----------------------------
 
@@ -143,18 +159,11 @@ fitControl <- trainControl(
   savePredictions = 'final'
 )
 
-predictors <- c("full_time","education_age","male","log_hh","disabled","unemployed",
-                "part_time","white_british","pakistan_bangladesh","log_age",
-                "non_uk_born","social_housing","private_renting","own_mortgage",
-                "own_outright","region_fct","e","d","c1","c2","b","cohabiting")
-
-outcome_name <- "income"
-
 # training lower layer models -------------------------------------------------
 
 #Training the random forest model
-model_rf <- train(train_set[,predictors],
-                  train_set[,outcome_name],
+model_rf <- train(train_predictors,
+                  train_outcome,
                   method='rf',
                   trControl=fitControl,
                   tuneLength=3)
@@ -162,33 +171,57 @@ model_rf <- train(train_set[,predictors],
 saveRDS(model_rf, file = "model_rf_W22.RDS")
 
 #Training the lm model
-model_lm <- train(train_set[,predictors],
-                  train_set[,outcome_name],
+model_lm <- train(train_predictors,
+                  train_outcome,
                   method='lm',
-                  trControl=fitControl,
-                  tuneLength=3)
+                  trControl=fitControl)
+
+#Training the lasso model
+region_df <- model.matrix(train_outcome ~ train_predictors[,"region_fct"])[,-1]
+colnames(region_df) <- str_c(seq(2,11,1))
+edu_df <- model.matrix(train_outcome ~ train_predictors[,"education_age"])[,-1]
+colnames(edu_df) <- str_c(str_c("edu",seq(2,7,1)))
+
+ls_train_predictors <- cbind(train_predictors[,-c(2,16,23,24,25)],region_df,edu_df)
+ls_train_predictors |> map_chr(class)
+
+lasso_grid <- data.frame(fraction = seq(.5, 1, length = 10))
+set.seed(123)
+model_ls <- train(ls_train_predictors,
+                  train_outcome,
+                  method='lasso',
+                  tuneGrid = lasso_grid,
+                  trControl=fitControl)
+
+model_ls # lasso fraction = 1, therefore equivalent to OLS
 
 #Training the nn model
-model_nn <- train(train_set[,predictors],
-                  train_set[,outcome_name],
+my_grid <- expand.grid(.decay = c(0.9, 0.5, 0.1), .size = c(5:10))
+
+model_nn <- train(train_predictors,
+                  train_outcome,
                   method='nnet',
+                  tuneGrid = my_grid,
                   trControl=fitControl,
                   linout = TRUE,
-                  tuneLength=3)
+                  maxit = 1000)
+model_nn
 
-test_set$pred_rf <- predict(object = model_rf, test_set[,predictors])
-test_set$pred_lm <- predict(object = model_lm, test_set[,predictors])
-test_set$pred_nn <- predict(object = model_nn, test_set[,predictors])
+saveRDS(model_nn, file = "model_nn_W22.RDS")
 
-#Predicting the out of fold prediction income for training data
-train_set$OOF_pred_rf <- model_rf$pred$pred[order(model_rf$pred$rowIndex)]
-train_set$OOF_pred_lm <- model_lm$pred$pred[order(model_lm$pred$rowIndex)]
-train_set$OOF_pred_nn <- model_nn$pred$pred[order(model_nn$pred$rowIndex)]
+test_predictors$pred_rf <- predict(object = model_rf, test_predictors)
+test_predictors$pred_lm <- predict(object = model_lm, test_predictors)
+test_predictors$pred_nn <- predict(object = model_nn, test_predictors)
 
-#Predicting income for the test data
-test_set$OOF_pred_rf <- predict(model_rf, test_set[predictors])
-test_set$OOF_pred_lm <- predict(model_lm, test_set[predictors])
-test_set$OOF_pred_nn <- predict(model_nn, test_set[predictors])
+#Predicting the out of fold prediction non-decent % for training data
+train_predictors$OOF_pred_rf <- model_rf$pred$pred[order(model_rf$pred$rowIndex)]
+train_predictors$OOF_pred_lm <- model_lm$pred$pred[order(model_lm$pred$rowIndex)]
+train_predictors$OOF_pred_nn <- model_nn$pred$pred[order(model_nn$pred$rowIndex)]
+
+#Predicting non-decent % for the test data
+test_predictors$OOF_pred_rf <- predict(model_rf, test_predictors)
+test_predictors$OOF_pred_lm <- predict(model_lm, test_predictors)
+test_predictors$OOF_pred_nn <- predict(model_nn, test_predictors)
 
 # ensemble model -----------------------------------------------------------
 
@@ -196,37 +229,20 @@ test_set$OOF_pred_nn <- predict(model_nn, test_set[predictors])
 predictors_top <- c('OOF_pred_rf', 'OOF_pred_lm', 'OOF_pred_nn') 
 
 #lm as top layer model 
-model_el <- train(train_set[,predictors_top],
-                  train_set[,outcome_name],
-                  method = 'lm',
-                  trControl = fitControl,
-                  tuneLength = 3)
-
-#lm as top layer model 
-model_el2 <- train(train_set[,predictors_top],
-                   train_set[,outcome_name],
-                   method = 'nnet',
-                   trControl = fitControl,
-                   linout = TRUE,
-                   tuneLength = 3)
+model_elm <- train(train_predictors[,predictors_top],
+                   train_outcome,
+                   method = 'lm',
+                   trControl = fitControl)
 
 #predict using lm top layer model
-test_set$pred_el <- predict(model_el, test_set[,predictors_top])
-test_set$pred_el2 <- predict(model_el2, test_set[,predictors_top])
-
-test_set <- test_set %>% 
-  mutate(
-    pred_avg = (OOF_pred_rf + OOF_pred_lm + OOF_pred_nn)/3
-  )
+test_predictors$pred_elm <- predict(model_elm, test_predictors)
 
 # RMSE on test data ----------------------------------------------------------
 
-sqrt(mean((test_set$income - test_set$pred_rf)^2))
-sqrt(mean((test_set$income - test_set$pred_lm)^2))
-sqrt(mean((test_set$income - test_set$pred_nn)^2))
-sqrt(mean((test_set$income - test_set$pred_el)^2))
-sqrt(mean((test_set$income - test_set$pred_el2)^2))
-sqrt(mean((test_set$income - test_set$pred_avg)^2))
+sqrt(mean((test_outcome - test_predictors$pred_rf)^2))
+sqrt(mean((test_outcome - test_predictors$pred_lm)^2))
+sqrt(mean((test_outcome - test_predictors$pred_nn)^2))
+sqrt(mean((test_outcome - test_predictors$pred_elm)^2))
 
 #Predicting income for the whole dataset --------------------------------------
 
@@ -239,23 +255,24 @@ pred_df <- dat %>%
   select(id, all_of(predictors)) %>% 
   na.omit()
 
+pred_df <- predict(x_trans, pred_df)
 pred_df$OOF_pred_rf <- predict(model_rf, pred_df[predictors])
 pred_df$OOF_pred_lm <- predict(model_lm, pred_df[predictors])
 pred_df$OOF_pred_nn <- predict(model_nn, pred_df[predictors])
-pred_df$pred_el <- predict(model_el2, pred_df[,predictors_top])
+pred_df$pred_elm <- predict(model_elm, pred_df[,predictors_top])
 
 # distribution of predictions and real values ---------------------------------
 
 pred_df %>% 
   ggplot() +
-  geom_density(aes(x = pred_el), fill = "lightgrey", alpha = 0.5) +
+  geom_density(aes(x = pred_elm), fill = "lightgrey", alpha = 0.5) +
   geom_density(data = dat, aes(x = income), fill = "lightblue", alpha = 0.5) +
   theme_bw()
 
 # visualising distribution of residuals
 pred_df %>% 
   left_join(mod_dat %>% select(id, income), by = "id") %>% 
-  mutate(res = income - pred_el) %>% 
+  mutate(res = income - pred_elm) %>% 
   ggplot(aes(x = res)) +
   geom_histogram(aes(y = after_stat(density)),
                  binwidth = 1, colour = "black", fill = "lightgrey") +
@@ -264,6 +281,8 @@ pred_df %>%
 
 # saving ensemble model ------------------------------------------------
 
-income_preds_W22 <- pred_df %>% select(id, pred_el)
+income_preds_W22 <- pred_df |> 
+  rename(pred_el = pred_elm) |> 
+  select(id, pred_el)
 
 save(income_preds_W22, file = "income_preds_W22.RData")

@@ -162,8 +162,7 @@ saveRDS(model_rf, file = "model_rf_W20.RDS")
 model_lm <- train(train_set[,predictors],
                   train_set[,outcome_name],
                   method='lm',
-                  trControl=fitControl,
-                  tuneLength=3)
+                  trControl=fitControl)
 
 #Training the nn model
 model_nn <- train(train_set[,predictors],
@@ -199,17 +198,8 @@ model_el <- train(train_set[,predictors_top],
                   trControl = fitControl,
                   tuneLength = 3)
 
-#nnet as top layer model 
-model_el2 <- train(train_set[,predictors_top],
-                   train_set[,outcome_name],
-                   method = 'nnet',
-                   trControl = fitControl,
-                   linout = TRUE,
-                   tuneLength = 3)
-
 #predict using lm and nnet top layer models
 test_set$pred_el <- predict(model_el, test_set[,predictors_top])
-test_set$pred_el2 <- predict(model_el2, test_set[,predictors_top])
 
 # RMSE on test data ----------------------------------------------------------
 
@@ -217,7 +207,6 @@ sqrt(mean((test_set$income - test_set$pred_rf)^2))
 sqrt(mean((test_set$income - test_set$pred_lm)^2))
 sqrt(mean((test_set$income - test_set$pred_nn)^2))
 sqrt(mean((test_set$income - test_set$pred_el)^2))
-sqrt(mean((test_set$income - test_set$pred_el2)^2))
 
 #Predicting income for the whole dataset --------------------------------------
 
