@@ -1,5 +1,3 @@
-rm(list = ls())
-
 pacman::p_load(tidyverse)
 
 all_ages <- read_csv("data/la_all_ages.csv",
@@ -8,9 +6,9 @@ all_ages <- read_csv("data/la_all_ages.csv",
 all_ages_lad <- all_ages %>% 
   rename(oslaua_code = mnemonic) %>%
   filter(str_detect(Area, "ladu")) %>% 
-  select(oslaua_code, one_of(as.character(seq(2020,2022,1)))) %>% 
+  select(oslaua_code, one_of(as.character(seq(2016,2021,1)))) %>% 
   pivot_longer(
-    cols = `2020`:`2022`,
+    cols = `2016`:`2021`,
     names_to = "year",
     values_to = "total_pop"
   ) %>% 
@@ -19,9 +17,9 @@ all_ages_lad <- all_ages %>%
 all_ages_lad_pre19 <- all_ages %>% 
   rename(oslaua_code = mnemonic) %>%
   filter(str_detect(Area, "ualad19")) %>% 
-  select(oslaua_code, one_of(as.character(seq(2020,2022,1)))) %>% 
+  select(oslaua_code, one_of(as.character(seq(2016,2021,1)))) %>% 
   pivot_longer(
-    cols = `2020`:`2022`,
+    cols = `2016`:`2021`,
     names_to = "year",
     values_to = "total_pop"
   ) %>% 
@@ -41,9 +39,9 @@ over_65 <- read_csv("data/la_aged_65plus.csv",
 over_65_lad <- over_65 %>% 
   rename(oslaua_code = mnemonic) %>%
   filter(str_detect(Area, "ladu")) %>% 
-  select(oslaua_code, one_of(as.character(seq(2020,2022,1)))) %>% 
+  select(oslaua_code, one_of(as.character(seq(2016,2021,1)))) %>% 
   pivot_longer(
-    cols = `2020`:`2022`,
+    cols = `2016`:`2021`,
     names_to = "year",
     values_to = "over_65"
   ) %>% 
@@ -52,9 +50,9 @@ over_65_lad <- over_65 %>%
 over_65_lad_pre19 <- over_65 %>% 
   rename(oslaua_code = mnemonic) %>%
   filter(str_detect(Area, "ualad19")) %>% 
-  select(oslaua_code, one_of(as.character(seq(2020,2022,1)))) %>% 
+  select(oslaua_code, one_of(as.character(seq(2016,2021,1)))) %>% 
   pivot_longer(
-    cols = `2020`:`2022`,
+    cols = `2016`:`2021`,
     names_to = "year",
     values_to = "over_65"
   ) %>% 
@@ -74,9 +72,9 @@ under_15 <- read_csv("data/la_aged_0_to_15.csv",
 under_15_lad <- under_15 %>% 
   rename(oslaua_code = mnemonic) %>%
   filter(str_detect(Area, "ladu")) %>% 
-  select(oslaua_code, one_of(as.character(seq(2020,2022,1)))) %>% 
+  select(oslaua_code, one_of(as.character(seq(2016,2021,1)))) %>% 
   pivot_longer(
-    cols = `2020`:`2022`,
+    cols = `2016`:`2021`,
     names_to = "year",
     values_to = "under_15"
   ) %>% 
@@ -85,9 +83,9 @@ under_15_lad <- under_15 %>%
 under_15_lad_pre19 <- under_15 %>% 
   rename(oslaua_code = mnemonic) %>%
   filter(str_detect(Area, "ualad19")) %>% 
-  select(oslaua_code, one_of(as.character(seq(2020,2022,1)))) %>% 
+  select(oslaua_code, one_of(as.character(seq(2016,2021,1)))) %>% 
   pivot_longer(
-    cols = `2020`:`2022`,
+    cols = `2016`:`2021`,
     names_to = "year",
     values_to = "under_15"
   ) %>% 
