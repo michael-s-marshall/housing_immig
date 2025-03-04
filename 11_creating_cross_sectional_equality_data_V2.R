@@ -171,18 +171,6 @@ df %>%
   unique() %>% 
   as_vector() # missing = Scotland, City of London, Isles of Scilly
 
-# gdp data --------------------------------------------------------------------
-
-gdp <- read_csv("data/gdp_per_capita.csv")
-
-gdp_capita <- gdp %>% 
-  rename(la_code = `LA code`,
-         gdp_capita = `2022`) %>% 
-  select(la_code, gdp_capita)
-
-df <- df %>% 
-  left_join(gdp_capita, by = "la_code")
-
 # population data -----------------------------------------------------------
 
 load("working/data/pop.RData")

@@ -160,27 +160,6 @@ df <- df %>%
   left_join(afford, by = c("oslaua_code","year")) %>% 
   left_join(prices, by = c("oslaua_code","year"))
 
-# gdp data --------------------------------------------------------------------
-
-gdp <- read_csv("data/gdp_per_capita.csv")
-
-gdp <- gdp %>% 
-  rename(oslaua_code = `LA code`) %>%
-  pivot_longer(
-    cols = all_of(year_range),
-    names_to = "year",
-    values_to = "gdp_capita"
-  ) %>%
-  group_by(oslaua_code) %>% 
-  mutate(year = parse_double(year),
-         gdp_capita_mean = mean(gdp_capita, na.rm = T),
-         gdp_capita_within = gdp_capita - gdp_capita_mean) %>%
-  ungroup() %>% 
-  select(oslaua_code, year, gdp_capita, gdp_capita_mean, gdp_capita_within)
-
-df <- df %>% 
-  left_join(gdp, by = c("oslaua_code", "year"))
-
 # population data -----------------------------------------------------------
 
 load("working/data/pop.RData")

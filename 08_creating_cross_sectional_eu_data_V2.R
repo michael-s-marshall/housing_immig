@@ -175,18 +175,6 @@ df %>%
   unique() %>% 
   as_vector() # missing = Scotland
 
-# gdp data --------------------------------------------------------------------
-
-gdp <- read_csv("data/gdp_per_capita.csv")
-
-gdp_capita <- gdp %>% 
-  rename(la_code = `LA code`,
-         gdp_capita = `2020`) %>% 
-  select(la_code, gdp_capita)
-
-df <- df %>% 
-  left_join(gdp_capita, by = "la_code")
-
 # population data -----------------------------------------------------------
 
 load("working/data/pop.RData")
@@ -293,7 +281,7 @@ save(df, file = "working/data/cross_sectional_df_eu.RData")
 
 summ_vars <- c("male","uni","social_housing","homeowner","private_renting",
                "white_british","no_religion","edu_20plus","age_raw","c1_c2","d_e",
-               "non_uk_born","uni","income","gdp_capita_raw","foreign_per_1000_raw",
+               "non_uk_born","uni","income","foreign_per_1000_raw",
                "over_65_pct_raw","under_15_pct_raw","over_65_pct_raw","degree_pct_raw",
                "pop_sqm_2020_raw","affordability_raw","prices_raw", "income_full",
                "control_immi")
