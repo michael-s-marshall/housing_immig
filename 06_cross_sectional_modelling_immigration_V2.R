@@ -92,6 +92,21 @@ immi_lmer <- lmer(immigSelf ~ (1|LAD), data = df_immi, REML = F)
 
 summ(immi_lmer)
 
+get_icc <- function(lmer_obj){
+  my_summ <- summary(lmer_obj)
+  lvl2_var <- attr(my_summ$varcor[[1]],"stddev")^2
+  lvl1_var <- my_summ$sigma^2
+  total_var <- lvl1_var + lvl2_var
+  icc <- lvl2_var / total_var
+  out <- tibble(lvl2_var = lvl2_var,
+                lvl1_var = lvl1_var,
+                total_var = total_var,
+                icc = icc)
+  return(out)
+}
+
+get_icc(immi_lmer)
+
 logLik(immi_fit)
 logLik(immi_lmer)
 2 * (logLik(immi_lmer) - logLik(immi_fit))
@@ -208,6 +223,10 @@ anova(immi_hom, immi_int)
 
 saveRDS(immi_int, file = "working/markdown_data/immi_int.RDS")
 
+# amount of level 2 variance explained -----------------------------
+
+1 - (get_icc(immi_int)$lvl2_var / get_icc(immi_lmer)$lvl2_var)
+
 # robustness check - log scale -------------------------------------
 
 immi_log <- lmer(immigSelf ~ (social_housing * affordability_log) +
@@ -237,6 +256,8 @@ immi_int_price <- lmer(immigSelf ~ (social_housing * prices) +
                          (1|LAD),
                        data = df_immi, REML = FALSE)
 summary(immi_int_price)
+
+1 - (get_icc(immi_int_price)$lvl2_var / get_icc(immi_lmer)$lvl2_var)
 
 # robustness check - dummy for region ----------------------------------
 
@@ -315,7 +336,8 @@ summary(immi_uni)
 
 df_inc <- df_inc %>% 
   mutate(social_housing.affordability = social_housing * affordability,
-         homeowner.affordability = homeowner * affordability)
+         homeowner.affordability = homeowner * affordability,
+         income_full = round(income_full, 0))
 
 immi_inc <- lmer(immigSelf ~ social_housing + homeowner + private_renting +  
                    affordability +

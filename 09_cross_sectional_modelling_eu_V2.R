@@ -80,6 +80,21 @@ immig_lmer <- lmer(control_immi ~ (1|LAD), data = df_immi,
 
 summ(immig_lmer)
 
+get_icc <- function(lmer_obj){
+  my_summ <- summary(lmer_obj)
+  lvl2_var <- attr(my_summ$varcor[[1]],"stddev")^2
+  lvl1_var <- my_summ$sigma^2
+  total_var <- lvl1_var + lvl2_var
+  icc <- lvl2_var / total_var
+  out <- tibble(lvl2_var = lvl2_var,
+                lvl1_var = lvl1_var,
+                total_var = total_var,
+                icc = icc)
+  return(out)
+}
+
+get_icc(immig_lmer)
+
 logLik(immig_fit)
 logLik(immig_lmer)
 2 * (logLik(immig_lmer) - logLik(immig_fit))
@@ -146,6 +161,10 @@ anova(immig_hom, immig_int)
 
 saveRDS(immig_int, file = "working/markdown_data/immig_eu_int.RDS")
 
+# level 2 variance explained ------------------------------------
+
+1 - (get_icc(immig_int)$lvl2_var / get_icc(immig_lmer)$lvl2_var)
+
 # with uni var ---------------------------------------------------
 
 df_immi_uni <- df_immi_uni %>% 
@@ -193,6 +212,8 @@ immig_pri <- lmer(control_immi ~ (social_housing * prices) +
                    data = df_immi, REML = FALSE)
 summary(immig_pri)
 
+1 - (get_icc(immig_pri)$lvl2_var / get_icc(immig_lmer)$lvl2_var)
+
 # region dummies ------------------------------------------
 
 immig_reg <- lmer(control_immi ~ social_housing + homeowner + private_renting +
@@ -215,7 +236,8 @@ summary(immig_reg)
 
 df_inc <- df_inc %>% 
   mutate(social_housing.affordability = social_housing * affordability,
-         homeowner.affordability = homeowner * affordability)
+         homeowner.affordability = homeowner * affordability,
+         income_full = round(income_full, 0))
 
 immi_inc <- lmer(control_immi ~ social_housing.affordability +
                    homeowner.affordability +
